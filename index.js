@@ -42,7 +42,7 @@ es.merge = function (/*streams...*/) {
       ended = true
       endCount ++
       if(endCount == toMerge.length)
-        stream.emit('end') 
+        stream.emit('end')
     })
   })
   stream.write = function (data) {
@@ -57,7 +57,7 @@ es.merge = function (/*streams...*/) {
 }
 
 
-// writable stream, collects all events into an array 
+// writable stream, collects all events into an array
 // and calls back when 'end' occurs
 // mainly I'm using this to test the other functions
 
@@ -92,13 +92,13 @@ es.readArray = function (array) {
     , i = 0
     , paused = false
     , ended = false
- 
-  stream.readable = true  
+
+  stream.readable = true
   stream.writable = false
- 
+
   if(!Array.isArray(array))
     throw new Error('event-stream.read expects an array')
-  
+
   stream.resume = function () {
     if(ended) return
     paused = false
@@ -135,23 +135,23 @@ function (func, continueOnError) {
     , ended = false
     , reading = false
 
-  stream.readable = true  
+  stream.readable = true
   stream.writable = false
- 
+
   if('function' !== typeof func)
     throw new Error('event-stream.readable expects async function')
-  
+
   stream.on('end', function () { ended = true })
-  
+
   function get (err, data) {
-    
+
     if(err) {
       stream.emit('error', err)
       if(!continueOnError) stream.emit('end')
     } else if (arguments.length > 1)
       stream.emit('data', data)
 
-    process.nextTick(function () {
+    setImmediate(function () {
       if(ended || paused || reading) return
       try {
         reading = true
@@ -160,7 +160,7 @@ function (func, continueOnError) {
           get.apply(null, arguments)
         })
       } catch (err) {
-        stream.emit('error', err)    
+        stream.emit('error', err)
       }
     })
   }
@@ -168,7 +168,7 @@ function (func, continueOnError) {
     paused = false
     get()
   }
-  process.nextTick(get)
+  setImmediate(get)
   stream.pause = function () {
      paused = true
   }
@@ -185,7 +185,7 @@ function (func, continueOnError) {
 // map sync
 //
 
-es.mapSync = function (sync) { 
+es.mapSync = function (sync) {
   return es.through(function write(data) {
     var mappedData = sync(data)
     if (typeof mappedData !== 'undefined')
@@ -223,7 +223,7 @@ es.child = function (child) {
 // must be used after es.split() to ensure that each chunk represents a line
 // source.pipe(es.split()).pipe(es.parse())
 
-es.parse = function () { 
+es.parse = function () {
   return es.through(function (data) {
     var obj
     try {
@@ -241,33 +241,33 @@ es.parse = function () {
 // stringify
 //
 
-es.stringify = function () { 
+es.stringify = function () {
   var Buffer = require('buffer').Buffer
-  return es.mapSync(function (e){ 
+  return es.mapSync(function (e){
     return JSON.stringify(Buffer.isBuffer(e) ? e.toString() : e) + '\n'
-  }) 
+  })
 }
 
 //
 // replace a string within a stream.
 //
-// warn: just concatenates the string and then does str.split().join(). 
+// warn: just concatenates the string and then does str.split().join().
 // probably not optimal.
 // for smallish responses, who cares?
 // I need this for shadow-npm so it's only relatively small json files.
 
 es.replace = function (from, to) {
   return es.pipeline(es.split(from), es.join(to))
-} 
+}
 
 //
 // join chunks with a joiner. just like Array#join
 // also accepts a callback that is passed the chunks appended together
 // this is still supported for legacy reasons.
-// 
+//
 
 es.join = function (str) {
-  
+
   //legacy api
   if('function' === typeof str)
     return es.wait(str)
